@@ -2648,7 +2648,7 @@ class _FeedURLHandler(urllib2.HTTPDigestAuthHandler, urllib2.HTTPRedirectHandler
         except:
             return self.http_error_default(req, fp, code, msg, headers)
 
-def _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, handlers):
+def _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, handlers, timeout):
     """URL, filename, or string --> stream
 
     This function lets you define parsers that take any input source
@@ -2739,7 +2739,7 @@ def _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, h
         opener = apply(urllib2.build_opener, tuple([_FeedURLHandler()] + handlers))
         opener.addheaders = [] # RMK - must clear so we only send our custom User-Agent
         try:
-            return opener.open(request)
+            return opener.open(request, timeout = timeout)
         finally:
             opener.close() # JohnD
     
@@ -3397,8 +3397,9 @@ def _stripDoctype(data):
     data = doctype_pattern.sub(replacement, head) + data
 
     return version, data, dict(replacement and safe_pattern.findall(replacement))
-    
-def parse(url_file_stream_or_string, etag=None, modified=None, agent=None, referrer=None, handlers=[]):
+
+import socket    
+def parse(url_file_stream_or_string, etag=None, modified=None, agent=None, referrer=None, handlers=[], timeout=None):
     '''Parse a feed from a URL, file, stream, or string'''
     result = FeedParserDict()
     result['feed'] = FeedParserDict()
@@ -3408,7 +3409,8 @@ def parse(url_file_stream_or_string, etag=None, modified=None, agent=None, refer
     if type(handlers) == types.InstanceType:
         handlers = [handlers]
     try:
-        f = _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, handlers)
+	if not timeout: timeout = socket.getdefaulttimeout()
+        f = _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, handlers, timeout)
         data = f.read()
     except Exception, e:
         result['bozo'] = 1
